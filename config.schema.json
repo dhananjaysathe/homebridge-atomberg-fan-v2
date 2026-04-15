@@ -1,15 +1,17 @@
 {
-  "pluginAlias": "Atomberg Fan",
+  "pluginAlias": "AtombergFanV2",
   "pluginType": "platform",
   "singular": true,
+  "headerDisplay": "Homebridge plugin for Atomberg Smart Fans. Enable **Developer Options** in the Atomberg Home app to obtain your **API Key** and **Refresh Token** (see the [developer portal](https://developer.atomberg-iot.com/#overview)).",
+  "footerDisplay": "For help, open an issue on the [GitHub repository](https://github.com/dhananjaysathe/homebridge-atomberg-fan-v2/issues).",
   "schema": {
     "type": "object",
     "properties": {
       "name": {
         "title": "Name",
         "type": "string",
-        "default": "Homebridge Atomberg Fan",
-        "placeholder": "Homebridge Atomberg Fan",
+        "default": "Homebridge Atomberg Fan v2",
+        "placeholder": "Homebridge Atomberg Fan v2",
         "required": true
       },
       "apiKey": {
@@ -23,30 +25,19 @@
         "type": "string",
         "placeholder": "Refresh Token",
         "required": true
+      },
+      "legacy5Speed": {
+        "title": "Legacy 5-speed mode",
+        "description": "Enable only if your fan does not support the 6th Boost speed. When enabled, HomeKit's 0-100% maps to speeds 0-5 (in 20% steps) instead of 0-6 (continuous).",
+        "type": "boolean",
+        "default": false
       }
     }
   },
   "layout": [
-    {
-      "type": "flex",
-      "flex-flow": "row wrap",
-      "items": [
-        "name"
-      ]
-    },
-    {
-      "type": "flex",
-      "flex-flow": "row wrap",
-      "items": [
-        "apiKey"
-      ]
-    },
-    {
-      "type": "flex",
-      "flex-flow": "row wrap",
-      "items": [
-        "refreshToken"
-      ]
-    }
+    { "type": "flex", "flex-flow": "row wrap", "items": ["name"] },
+    { "type": "flex", "flex-flow": "row wrap", "items": ["apiKey"] },
+    { "type": "flex", "flex-flow": "row wrap", "items": ["refreshToken"] },
+    { "type": "flex", "flex-flow": "row wrap", "items": ["legacy5Speed"] }
   ]
 }

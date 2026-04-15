@@ -1,51 +1,93 @@
 <span align="center">
 
-# Homebridge Atomberg Fan
+# Homebridge Atomberg Fan v2
 
 </span>
 
-[![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
-[![GitHub version](https://img.shields.io/github/package-json/v/Sangwan5688/homebridge-atomberg-fan?label=GitHub)](https://github.com/Sangwan5688/homebridge-atomberg-fan)
-[![npm version](https://img.shields.io/npm/v/homebridge-atomberg-fan?color=%23cb3837&label=npm)](https://www.npmjs.com/package/homebridge-atomberg-fan)
+[![npm version](https://img.shields.io/npm/v/homebridge-atomberg-fan-v2?color=%23cb3837&label=npm)](https://www.npmjs.com/package/homebridge-atomberg-fan-v2)
+[![GitHub version](https://img.shields.io/github/package-json/v/dhananjaysathe/homebridge-atomberg-fan-v2?label=GitHub)](https://github.com/dhananjaysathe/homebridge-atomberg-fan-v2)
 
-Homebridge Atomberg Fan is a plugin for [Homebridge](https://homebridge.io/) that provides Homekit support for [Atomberg Smart Fans](https://atomberg.com/).
+Homebridge plugin that exposes [Atomberg smart fans](https://atomberg.com/) to HomeKit. A maintained fork of [`homebridge-atomberg-fan`](https://github.com/Sangwan5688/homebridge-atomberg-fan) with Homebridge v2.0 support, the 6th (Boost) fan speed, working LED / brightness / colour-temperature control, and a hardened local UDP state loop.
+
+## What's different from the original
+
+This fork ships a working v2.0-compatible build with feature and stability work that was never published upstream.
+
+- **Homebridge v2.0 compatibility.** Dual peer-dep range (`^1.8.0 || ^2.0.0-beta.0`), Node 18 / 20 / 22 engines, modern HAP characteristic patterns. Fixes upstream [shadow5688/homebridge-atomberg-fan#5](https://github.com/shadow5688/homebridge-atomberg-fan/issues/5).
+- **6-speed Boost support.** HomeKit's 0–100 % rotation slider now maps to Atomberg's full 6-speed range, so 100 % triggers Boost as it should. Fixes upstream [shadow5688/homebridge-atomberg-fan#1](https://github.com/shadow5688/homebridge-atomberg-fan/issues/1). Set `legacy5Speed: true` in config to restore the old 5-speed behaviour.
+- **LED control actually published.** Upstream's LED PR was merged to git but never released to npm — this build includes it, plus two-way state sync so physical-remote or Atomberg-app changes reflect in the Home app.
+  - All series: LED on/off.
+  - I1 and M1 series: brightness (0–100 %).
+  - I1 series: colour temperature (warm / daylight / cool).
+- **Hardened local UDP listener.**
+  - Accepts both plain-UTF-8 and hex-encoded JSON payloads (newer firmware sends plain JSON).
+  - Unsigned bitmask math — fixes negative-valued `timer_time_elapsed_mins` on older firmwares.
+  - Heartbeat packets ("device seen") keep offline-detection accurate.
+  - No more log spam from non-state broadcast packets.
+- **API hygiene.** Global 200 ms throttle on outgoing commands keeps the plugin inside Atomberg's documented 5 req/s quota; slider drags are debounced (100 ms) and per-accessory throttled (250 ms); duplicate commands are suppressed.
+- **Offline detection.** If a device stops broadcasting for 5 minutes, the accessory reflects "off" in HomeKit instead of a stale on-state. A single API probe (rate-limited to once per 30 s) attempts recovery when you poke the device from HomeKit.
 
 ## How it works
 
-The plugin makes use of [Atomberg public APIs](https://developer.atomberg-iot.com/#overview) to fetch and control your device using the API calls. The plugin also listen to broadcasts on your network to update device state without making unnecessary api calls. All devices that are set up on your Atomberg account will appear in your Home app. If you remove a device from your account, it will also disappear from your Home app after you restart Homebridge.
+Atomberg fans broadcast their state on the local network over UDP port 5625 and accept commands via a cloud REST API. The plugin listens to the broadcasts for instant state updates, and uses the REST API only for control commands and login. All devices on your Atomberg account appear in the Home app automatically.
 
-## Homebridge Setup
+## Setup
 
-### Step 1: Generate API Key
+### Step 1 — Get your API credentials
 
-Go to Atomberg Home App and enable Developer Options to get your `API Key` and `Refresh Token`, as mentioned in Step 1 of Quickstart section on [Atomberg Developer Portal](https://developer.atomberg-iot.com/#overview).
+Open the Atomberg Home app and enable **Developer Options** to obtain your **API Key** and **Refresh Token**. Details: [Atomberg developer portal](https://developer.atomberg-iot.com/#overview).
 
-### Step 2: Install Plugin
+### Step 2 — Install the plugin
 
-Go to your Homebrige UI and search for Atomberg Fan in the plugins section and select this plugin.
+In the Homebridge UI, search for **Homebridge Atomberg Fan v2** (or install via `npm i -g homebridge-atomberg-fan-v2`).
 
-### Step 3: Configure
+> **Migrating from `homebridge-atomberg-fan`?** This plugin uses a different platform alias (`AtombergFanV2`), so it installs cleanly alongside the older plugin. Remove the old platform block from `config.json` once you've confirmed v2 is working.
 
-Once Installed configure the plugin. Enter you API Key and Refresh Token which you got from Atomberg Home App.
-You can even enter the details directly to config file incase you aren't using UI.
+### Step 3 — Configure
 
-```
+```json
 {
   "platforms": [
     {
-      "platform": "Atomberg Fan",
-      "name": "Homebridge Atomberg Fan",
+      "platform": "AtombergFanV2",
+      "name": "Homebridge Atomberg Fan v2",
       "apiKey": "tw******",
       "refreshToken": "ey******",
+      "legacy5Speed": false
     }
   ]
 }
 ```
 
-### Step 4: Why not?
+| Option         | Type    | Required | Description                                                                                        |
+|----------------|---------|----------|----------------------------------------------------------------------------------------------------|
+| `apiKey`       | string  | yes      | From the Atomberg Home app's Developer Options.                                                    |
+| `refreshToken` | string  | yes      | From the Atomberg Home app's Developer Options.                                                    |
+| `legacy5Speed` | boolean | no       | Set to `true` for older fans that physically lack the Boost (6th) speed. Default `false`.          |
 
-That's all, just restart Homebridge and your devices should show up in the Accessories tab of Homebridge. You can now add them to your Apple Home App using homebridge.
+### Step 4 — Restart
+
+Restart Homebridge. Your Atomberg fans appear in the Accessories tab and can be added to the Home app.
+
+## Supported devices
+
+Any Atomberg fan exposed by the Atomberg developer API. Brightness is controllable on **I1** and **M1** LED series; colour temperature on **I1**. Boost (6th speed) is available on all fans that physically support it.
+
+## Troubleshooting
+
+- **"Device is offline" but the fan is fine.** The plugin now probes the REST API once per 30 s when UDP is silent; if your network drops multicast/broadcast traffic (common on mesh Wi-Fi with client isolation), turn broadcast traffic back on.
+- **Boost speed isn't available / 100 % feels like speed 5.** Set `legacy5Speed: false` (the default). If your fan physically tops out at speed 5, set `legacy5Speed: true`.
+- **HomeKit LED brightness/colour won't budge.** Only the **I1** (brightness + colour temp) and **M1** (brightness) series support this via the Atomberg API.
+
+## Credits
+
+Built on top of substantial work by:
+
+- **[Sangwan5688](https://github.com/Sangwan5688)** — original [`homebridge-atomberg-fan`](https://github.com/Sangwan5688/homebridge-atomberg-fan) plugin.
+- **[gurmeherchawla](https://github.com/gurmeherchawla)** — LED control PR.
+- **[Kevin-Deason](https://github.com/Kevin-Deason/homebridge-atomberg-smart-fans)** — raised the 6-speed mapping idea.
+- **[Vishalcj17](https://github.com/Vishalcj17/homebridge-atomberg-fan)** — UDP hardening, debounce / throttle, offline detection.
 
 ## Disclaimer
 
-All product and company names are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them.
+All product and company names are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them. This plugin is not affiliated with, endorsed by, or sponsored by Atomberg Technologies.
