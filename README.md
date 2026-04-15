@@ -19,6 +19,7 @@ This fork ships a working v2.0-compatible build with feature and stability work 
   - All series: LED on/off.
   - I1 and M1 series: brightness (0–100 %).
   - I1 series: colour temperature (warm / daylight / cool).
+- **Single HomeKit tile per fan.** The Fanv2 service is marked primary and the LED service is linked to it, so iOS Home shows one tile per fan; long-press reveals both fan speed and light controls. (The Homebridge UI still lists them as two cards — that's an HB UI convention, not the plugin.)
 - **Hardened local UDP listener.**
   - Accepts both plain-UTF-8 and hex-encoded JSON payloads (newer firmware sends plain JSON).
   - Unsigned bitmask math — fixes negative-valued `timer_time_elapsed_mins` on older firmwares.

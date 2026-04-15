@@ -135,12 +135,15 @@ export class AtombergFanPlatform implements DynamicPlatformPlugin {
           this.log.info(`Restoring accessory '${existingAccessory.displayName}' (${device.device_id})`);
           existingAccessory.context.device = device;
           existingAccessory.context.deviceDisplayName = device.name;
-          this.api.updatePlatformAccessories([existingAccessory]);
 
+          // Build the accessory first so the constructor can add any missing
+          // services (e.g. Lightbulb for users upgrading from a pre-LED build),
+          // then persist the updated definition in one go.
           const atombergAccessory = new AtombergFanPlatformAccessory(
             this, this.atombergApi, existingAccessory, deviceState,
           );
           this.accessoryInstances.set(device.device_id, atombergAccessory);
+          this.api.updatePlatformAccessories([existingAccessory]);
         } else {
           this.log.info('Adding new accessory:', device.name);
           const accessory = new this.api.platformAccessory(device.name, uuid);

@@ -110,6 +110,11 @@ export class AtombergFanPlatformAccessory {
         .onSet(this.setLEDTemperature.bind(this));
     }
 
+    // Group the fan + LED into a single HomeKit tile. iOS Home will show one
+    // tile with the fan icon; long-press reveals both fan and light controls.
+    this.fanService.setPrimaryService(true);
+    this.fanService.addLinkedService(this.lightbulbService);
+
     this.refreshDeviceStatus(this.fanState);
   }
 

@@ -14,8 +14,10 @@ First release of the maintained fork `homebridge-atomberg-fan-v2`.
 - **Per-accessory throttle (250 ms)**, **speed-slider debounce (100 ms)**, and **duplicate-command suppression** to avoid API spam.
 - **Global 200 ms `sendCommand` throttle** to stay inside Atomberg's documented quota.
 - **Shutdown cleanup** — clears the offline-check interval and closes the UDP socket when Homebridge stops.
+- **Single HomeKit tile per fan** — Fanv2 marked as primary service with Lightbulb as a linked service, so iOS Home groups them under one tile instead of showing fan and LED as separate room tiles.
 
 ### Fixed
+- **Accessory service upgrade on restore** — moved `updatePlatformAccessories()` to after the accessory constructor runs so newly-added services (e.g. the Lightbulb on an upgrade from a pre-LED build) are actually persisted in the bridge cache.
 - **LED control** — the upstream LED PR was merged to git but never published to npm; this build includes it.
 - **UDP parser** — replaced signed bitmask math with unsigned shifts (`>>> 0`), fixing negative `timer_time_elapsed_mins` values on older firmware.
 - **UDP payload encoding** — now accepts plain-UTF-8 JSON (newer firmware) in addition to hex-encoded JSON.
