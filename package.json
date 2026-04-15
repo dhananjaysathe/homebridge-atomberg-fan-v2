@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/dhananjaysathe/homebridge-atomberg-fan-v2#readme",
   "engines": {
-    "node": "^18.20.4 || ^20.15.1 || ^22",
+    "node": "^18.20.4 || ^20.15.1 || ^22 || ^24",
     "homebridge": "^1.8.0 || ^2.0.0-beta.0"
   },
   "main": "dist/index.js",

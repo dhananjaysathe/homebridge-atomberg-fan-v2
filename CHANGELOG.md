@@ -5,7 +5,7 @@
 First release of the maintained fork `homebridge-atomberg-fan-v2`.
 
 ### Added
-- **Homebridge v2.0 compatibility** (upstream [#5](https://github.com/shadow5688/homebridge-atomberg-fan/issues/5)). Engines now declare `homebridge: ^1.8.0 || ^2.0.0-beta.0` and `node: ^18.20.4 || ^20.15.1 || ^22`.
+- **Homebridge v2.0 compatibility** (upstream [#5](https://github.com/shadow5688/homebridge-atomberg-fan/issues/5)). Engines now declare `homebridge: ^1.8.0 || ^2.0.0-beta.0` and `node: ^18.20.4 || ^20.15.1 || ^22 || ^24`.
 - **6-speed / Boost support** (upstream [#1](https://github.com/shadow5688/homebridge-atomberg-fan/issues/1)). HomeKit `RotationSpeed` 0–100 % maps continuously to Atomberg speeds 0–6; 100 % = Boost.
 - **`legacy5Speed` config option** to restore the old 5-speed 20 %-step behaviour for fans that physically lack Boost.
 - **LED state sync in `refreshDeviceStatus`** — physical-remote or Atomberg-app changes now reflect in the Home app without user interaction.
