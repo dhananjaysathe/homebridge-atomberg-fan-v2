@@ -5,19 +5,18 @@
   "version": "2.0.1",
   "description": "Homebridge platform plugin providing HomeKit support for Atomberg Smart Fans.",
   "license": "Apache-2.0",
-  "author": "Sangwan5688",
+  "author": "dhananjaysathe",
+  "contributors": [
+    "Sangwan5688"
+  ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Sangwan5688/homebridge-atomberg-fan.git"
+    "url": "git+https://github.com/dhananjaysathe/homebridge-atomberg-fan-v2.git"
   },
   "bugs": {
-    "url": "https://github.com/Sangwan5688/homebridge-atomberg-fan/issues"
+    "url": "https://github.com/dhananjaysathe/homebridge-atomberg-fan-v2/issues"
   },
-  "homepage": "https://github.com/Sangwan5688/homebridge-atomberg-fan#readme",
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/Sangwan5688"
-  },
+  "homepage": "https://github.com/dhananjaysathe/homebridge-atomberg-fan-v2#readme",
   "engines": {
     "node": ">=14.0.0",
     "homebridge": ">=1.3.5"
