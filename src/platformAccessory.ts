@@ -12,6 +12,7 @@ import { AtombergFanCommandData, AtombergFanDeviceState } from './model';
 export class AtombergFanPlatformAccessory {
   private fanService: Service;
   private lightbulbService: Service;
+  private readonly series: string;
 
   constructor(
     private readonly platform: AtombergFanPlatform,
@@ -19,6 +20,7 @@ export class AtombergFanPlatformAccessory {
     private readonly accessory: PlatformAccessory,
     private fanState: AtombergFanDeviceState,
   ) {
+    this.series = accessory.context.device.series || '';
 
     let modelName = accessory.context.device.model || '';
     if (accessory.context.device.series) {
@@ -74,10 +76,8 @@ export class AtombergFanPlatformAccessory {
     this.lightbulbService.getCharacteristic(this.platform.Characteristic.On)
       .onSet(this.setLED.bind(this));
 
-    const devicesSeries = accessory.context.device.series;
-
     // Lightbulb Characteristic Brightness for I1 or M1 series
-    if (devicesSeries === 'I1' || devicesSeries === 'M1') {
+    if (this.series === 'I1' || this.series === 'M1') {
       this.lightbulbService.getCharacteristic(this.platform.Characteristic.Brightness)
         .setProps({
           minValue: 0,
@@ -88,7 +88,7 @@ export class AtombergFanPlatformAccessory {
     }
 
     // Lightbulb Characteristic Temperature for I1 series
-    if (devicesSeries === 'I1') {
+    if (this.series === 'I1') {
       this.lightbulbService.getCharacteristic(this.platform.Characteristic.ColorTemperature)
         .setProps({
           minValue: 300,
@@ -97,6 +97,12 @@ export class AtombergFanPlatformAccessory {
         })
         .onSet(this.setLEDTemperature.bind(this));
     }
+
+    // Fan is the primary device; the LED is a linked secondary service.
+    // This makes HomeKit report the accessory's composite state from the fan,
+    // which is what we want for Control Center / aggregate room tiles.
+    this.fanService.setPrimaryService(true);
+    this.fanService.addLinkedService(this.lightbulbService);
 
     this.refreshDeviceStatus(this.fanState);
 
@@ -109,15 +115,15 @@ export class AtombergFanPlatformAccessory {
   async setActive(value: CharacteristicValue) {
     this.validateDeviceConnectionStatus();
 
-    this.fanState.power = value as boolean;
-
-    this.platform.log.debug('Set Characteristic Active ->', value);
     const powerState = value === this.platform.Characteristic.Active.ACTIVE;
+    this.platform.log.debug('Set Characteristic Active ->', value);
     const cmdData = {
       'device_id': this.accessory.context.device.device_id,
       'command': {'power': powerState, 'speed': powerState ? this.fanState.last_recorded_speed : 0},
     } as AtombergFanCommandData;
-    this.sendDeviceUpdate(cmdData);
+    if (await this.sendDeviceUpdate(cmdData)) {
+      this.fanState.power = powerState;
+    }
   }
 
 
@@ -128,8 +134,10 @@ export class AtombergFanPlatformAccessory {
     }
   }
 
-  // Send device update to Atomberg API
-  private async sendDeviceUpdate(commandData: AtombergFanCommandData) {
+  // Send device update to Atomberg API. Returns true if the command was acknowledged,
+  // false otherwise. Callers use this to gate local `fanState` mutations so that
+  // UDP broadcasts remain the source of truth when the API call fails.
+  private async sendDeviceUpdate(commandData: AtombergFanCommandData): Promise<boolean> {
     this.validateDeviceConnectionStatus();
 
     try {
@@ -138,6 +146,7 @@ export class AtombergFanPlatformAccessory {
       if (res) {
         this.platform.log.debug(`Successfully sent device update for device ['${this.accessory.displayName}']`);
       }
+      return !!res;
     } catch (error) {
       this.platform.log.error('An error occurred while sending a device update. ' +
             'Turn on debug mode for more information.');
@@ -147,6 +156,7 @@ export class AtombergFanPlatformAccessory {
       if (error) {
         this.platform.log.debug(JSON.stringify(error));
       }
+      return false;
     }
   }
 
@@ -158,16 +168,15 @@ export class AtombergFanPlatformAccessory {
   async setRotationSpeed(value: CharacteristicValue) {
     this.validateDeviceConnectionStatus();
 
-    // implement your own code to set the brightness
     const newSpeed = (value as number)/20;
-    this.fanState.last_recorded_speed = newSpeed;
-
     this.platform.log.debug('Set Characteristic Speed -> ', newSpeed);
     const cmdData = {
       'device_id': this.accessory.context.device.device_id,
       'command': {'speed': newSpeed},
     } as AtombergFanCommandData;
-    this.sendDeviceUpdate(cmdData);
+    if (await this.sendDeviceUpdate(cmdData)) {
+      this.fanState.last_recorded_speed = newSpeed;
+    }
   }
 
   /**
@@ -178,51 +187,61 @@ export class AtombergFanPlatformAccessory {
     this.validateDeviceConnectionStatus();
 
     const newLED = value as boolean;
-    this.fanState.led = newLED;
-
     this.platform.log.debug('Set Characteristic LED -> ', newLED);
     const cmdData = {
       'device_id': this.accessory.context.device.device_id,
       'command': {'led': newLED},
     } as AtombergFanCommandData;
-    this.sendDeviceUpdate(cmdData);
+    if (await this.sendDeviceUpdate(cmdData)) {
+      this.fanState.led = newLED;
+    }
   }
 
   async setLEDBrightness(value: CharacteristicValue) {
     this.validateDeviceConnectionStatus();
 
     const newBrightness = value as number;
-    this.fanState.last_recorded_brightness = newBrightness;
-
     this.platform.log.debug('Set Characteristic LED Brightness -> ', newBrightness);
     const cmdData = {
       'device_id': this.accessory.context.device.device_id,
       'command': {'brightness': newBrightness},
     } as AtombergFanCommandData;
-    this.sendDeviceUpdate(cmdData);
+    if (await this.sendDeviceUpdate(cmdData)) {
+      this.fanState.last_recorded_brightness = newBrightness;
+    }
   }
 
   async setLEDTemperature(value: CharacteristicValue) {
     this.validateDeviceConnectionStatus();
 
-    const newMired = value as number;
-    let newColorMode: string;
-    if (newMired >= 450) {
-      newColorMode = 'warm';
-    } else if (newMired >= 350 && newMired < 450) {
-      newColorMode = 'daylight';
-    } else {
-      newColorMode = 'cool';
-    }
-
-    this.fanState.last_recorded_color = newColorMode;
-
+    const newColorMode = this.colorModeFromMired(value as number);
     this.platform.log.debug('Set Characteristic LED Color Mode -> ', newColorMode);
     const cmdData = {
       'device_id': this.accessory.context.device.device_id,
       'command': {'light_mode': newColorMode},
     } as AtombergFanCommandData;
-    this.sendDeviceUpdate(cmdData);
+    if (await this.sendDeviceUpdate(cmdData)) {
+      this.fanState.last_recorded_color = newColorMode;
+    }
+  }
+
+  private colorModeFromMired(mired: number): string {
+    if (mired >= 450) {
+      return 'warm';
+    }
+    if (mired >= 350) {
+      return 'daylight';
+    }
+    return 'cool';
+  }
+
+  private miredFromColorMode(color: string | undefined): number {
+    switch ((color || '').toLowerCase()) {
+      case 'warm': return 500;
+      case 'daylight': return 400;
+      case 'cool': return 300;
+      default: return 400;
+    }
   }
 
   /**
@@ -239,6 +258,10 @@ export class AtombergFanPlatformAccessory {
 
       this.platform.log.debug(`Refreshing device ['${this.accessory.displayName}'] details`);
 
+      // Keep the local cache in sync with the device so subsequent setters
+      // (e.g. turning the fan on) use the latest values.
+      this.fanState = deviceState;
+
       // Active
       const active = deviceState.power
         ? this.platform.Characteristic.Active.ACTIVE
@@ -252,6 +275,24 @@ export class AtombergFanPlatformAccessory {
       }
       this.fanService.getCharacteristic(this.platform.Characteristic.RotationSpeed)
         .updateValue(fanSpeed*20);
+
+      // LED On
+      if (typeof deviceState.led === 'boolean') {
+        this.lightbulbService.updateCharacteristic(this.platform.Characteristic.On, deviceState.led);
+      }
+
+      // LED Brightness (I1 / M1 only)
+      if ((this.series === 'I1' || this.series === 'M1')
+          && typeof deviceState.last_recorded_brightness === 'number') {
+        const clamped = Math.max(0, Math.min(100, deviceState.last_recorded_brightness));
+        this.lightbulbService.updateCharacteristic(this.platform.Characteristic.Brightness, clamped);
+      }
+
+      // LED Colour Temperature (I1 only)
+      if (this.series === 'I1' && deviceState.last_recorded_color) {
+        const mired = this.miredFromColorMode(deviceState.last_recorded_color);
+        this.lightbulbService.updateCharacteristic(this.platform.Characteristic.ColorTemperature, mired);
+      }
 
     } catch (error) {
       this.platform.log.error('An error occurred while refreshing the device status. ' +

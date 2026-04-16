@@ -49,18 +49,24 @@ class BroadcastListener extends EventEmitter {
       const hexString = message.toString();
       const stringMessage = Buffer.from(hexString, 'hex').toString('utf8');
       const jsonMessage = JSON.parse(stringMessage);
-      const stateCode = jsonMessage['state_string'].split(',')[0];
+      // state_string is a numeric string; parse explicitly and force unsigned 32-bit
+      // so bit 31 (high byte of fan-timer-elapsed) doesn't flip the value negative.
+      const stateCode = (Number(jsonMessage['state_string'].split(',')[0]) >>> 0);
 
-      const power = ((0x10) & stateCode) > 0 ? true : false;
-      const led = ((0x20) & stateCode) > 0 ? true : false;
-      const sleep = ((0x80) & stateCode) > 0 ? true : false;
-      const speed = (0x07) & stateCode;
-      const fanTimer = ((0x0F0000 & stateCode) / 65536);
-      const fanTimerElapsedMins = ((0xFF000000 & stateCode) * 4 / 16777216);
+      const power = (stateCode & 0x10) > 0;
+      const led = (stateCode & 0x20) > 0;
+      const sleep = (stateCode & 0x80) > 0;
+      const speed = stateCode & 0x07;
+      const fanTimer = (stateCode & 0x0F0000) >>> 16;
+      const fanTimerElapsedMins = ((stateCode >>> 24) & 0xFF) * 4;
       // Aris Starlight Specific
-      const brightness = (((0x7F00) & stateCode) / 256);
-      const cool = ((0x08) & stateCode) > 0 ? true : false;
-      const warm = ((0x8000) & stateCode) > 0 ? true : false;
+      const brightness = (stateCode & 0x7F00) >>> 8;
+      const cool = (stateCode & 0x08) > 0;
+      const warm = (stateCode & 0x8000) > 0;
+
+      // Keep casing consistent with the Atomberg API's `light_mode` values
+      // (`warm` / `cool` / `daylight`) so the refresh path can round-trip it.
+      const color = cool ? (warm ? 'daylight' : 'cool') : 'warm';
 
       return {
         'device_id': jsonMessage['device_id'],
@@ -72,7 +78,7 @@ class BroadcastListener extends EventEmitter {
         'timer_hours': fanTimer,
         'timer_time_elapsed_mins': fanTimerElapsedMins,
         'last_recorded_brightness': brightness,  // aris starlight only
-        'last_recorded_color': cool ? (warm ? 'Daylight' : 'Cool') : 'Warm',  // aris starlight only
+        'last_recorded_color': color,  // aris starlight only
       } as AtombergFanDeviceState;
     } catch (error) {
       this.log.error('Error parsing broadcast message: ', error);
