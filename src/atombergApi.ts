@@ -73,7 +73,7 @@ export default class AtombergApi {
       'Restart Homebridge when you change your config, ' +
       'as it will probably not have an effect on its own. ' +
       'If the error still persists, please report to ' +
-      'https://github.com/Sangwan5688/homebridge-atomberg-fan/issues.',
+      'https://github.com/dhananjaysathe/homebridge-atomberg-fan-v2/issues.',
     );
     // Try to login again after some time. Might just be a transient server issue.
     this._loginRetryTimeouts.push(setTimeout(this.login.bind(this), LOGIN_RETRY_DELAY));
