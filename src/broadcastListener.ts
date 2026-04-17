@@ -41,7 +41,19 @@ class BroadcastListener extends EventEmitter {
   }
 
   private onMessage(message: Buffer, remote: dgram.RemoteInfo) {
-    const jsonMessage = this.decodeMessage(message);
+    const raw = message.toString('utf8');
+
+    // Observed in the wild (2026-04, Aris/Renesa firmware): plain-text presence
+    // beacons of the form `<12 hex char device_id>_Rx` — no state payload.
+    // These are the only broadcasts some firmwares emit, so treat them as
+    // heartbeats. Try this cheap path before JSON parsing.
+    const beaconDeviceId = this.parseBeacon(raw);
+    if (beaconDeviceId) {
+      this.emit('deviceSeen', beaconDeviceId);
+      return;
+    }
+
+    const jsonMessage = this.decodeMessage(raw);
     if (!jsonMessage) {
       // Not a recognised Atomberg packet — silently ignore instead of spamming logs.
       return;
@@ -59,17 +71,22 @@ class BroadcastListener extends EventEmitter {
         this.emit('stateChange', state);
       }
     } else {
-      // Heartbeat — emit presence so the platform can refresh its lastSeen timer.
       this.emit('deviceSeen', deviceId);
     }
+  }
+
+  private static readonly BEACON_RE = /^([0-9a-f]{12})(?:_[A-Za-z0-9]+)?$/i;
+
+  private parseBeacon(raw: string): string | null {
+    const m = BroadcastListener.BEACON_RE.exec(raw.trim());
+    return m ? m[1].toLowerCase() : null;
   }
 
   /**
    * Try plain UTF-8 JSON first; if that fails, try hex-decoded UTF-8 JSON.
    * Returns null on any parse failure.
    */
-  private decodeMessage(message: Buffer): Record<string, unknown> | null {
-    const raw = message.toString('utf8');
+  private decodeMessage(raw: string): Record<string, unknown> | null {
     try {
       return JSON.parse(raw);
     } catch {
