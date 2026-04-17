@@ -2,7 +2,7 @@
   "private": false,
   "displayName": "Homebridge Atomberg Fan v2",
   "name": "homebridge-atomberg-fan-v2",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Homebridge platform plugin for Atomberg Smart Fans. Adds Homebridge v2.0 compatibility, the 6th (Boost) speed, LED on/off + brightness + colour-temperature control, local UDP state sync, debounce + throttle, and offline detection.",
   "license": "Apache-2.0",
   "author": "Dhananjay Sathe <dhananjaysathe@gmail.com>",
