@@ -246,31 +246,38 @@ export class AtombergFanPlatformAccessory {
       this.platform.log.debug(`Refreshing '${this.accessory.displayName}'`);
 
       // Active
-      const active = deviceState.power
+      const powerState = !!deviceState.power;
+      const active = powerState
         ? this.platform.Characteristic.Active.ACTIVE
         : this.platform.Characteristic.Active.INACTIVE;
       this.fanService.updateCharacteristic(this.platform.Characteristic.Active, active);
+      this.lastPowerCmd = powerState;
 
       // Rotation speed
-      const percent = this.speedToPercent(deviceState.last_recorded_speed ?? 0);
+      const speed = deviceState.last_recorded_speed ?? 0;
+      const percent = this.speedToPercent(speed);
       this.fanService.updateCharacteristic(this.platform.Characteristic.RotationSpeed, percent);
+      this.lastSpeedCmd = speed;
 
       // LED on/off
-      this.lightbulbService.updateCharacteristic(this.platform.Characteristic.On, !!deviceState.led);
+      const ledState = !!deviceState.led;
+      this.lightbulbService.updateCharacteristic(this.platform.Characteristic.On, ledState);
+      this.lastLedCmd = ledState;
 
       // LED brightness (I1/M1 only; no-op on other series because the characteristic isn't registered)
       const series = this.accessory.context.device.series;
       if ((series === 'I1' || series === 'M1') && typeof deviceState.last_recorded_brightness === 'number') {
-        this.lightbulbService.updateCharacteristic(
-          this.platform.Characteristic.Brightness,
-          Math.max(0, Math.min(100, deviceState.last_recorded_brightness)),
-        );
+        const brightness = Math.max(0, Math.min(100, deviceState.last_recorded_brightness));
+        this.lightbulbService.updateCharacteristic(this.platform.Characteristic.Brightness, brightness);
+        this.lastBrightnessCmd = brightness;
       }
 
       // LED colour temperature (I1 only)
       if (series === 'I1' && deviceState.last_recorded_color) {
-        const mireds = AtombergFanPlatformAccessory.colorModeToMireds(deviceState.last_recorded_color);
+        const colorMode = deviceState.last_recorded_color.toLowerCase();
+        const mireds = AtombergFanPlatformAccessory.colorModeToMireds(colorMode);
         this.lightbulbService.updateCharacteristic(this.platform.Characteristic.ColorTemperature, mireds);
+        this.lastLightModeCmd = colorMode;
       }
     } catch (error) {
       this.platform.log.error('An error occurred while refreshing device status. Enable debug for details.');
