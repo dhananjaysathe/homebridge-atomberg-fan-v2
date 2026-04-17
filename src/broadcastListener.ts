@@ -113,7 +113,9 @@ class BroadcastListener extends EventEmitter {
         timer_time_elapsed_mins: fanTimerElapsedMins,
         ts_epoch_seconds: Math.floor(Date.now() / 1000),
         last_recorded_brightness: brightness,
-        last_recorded_color: cool ? (warm ? 'Daylight' : 'Cool') : 'Warm',
+        // Lowercase to match the Atomberg API's `light_mode` values so this
+        // round-trips with setLEDTemperature() / colorModeToMireds().
+        last_recorded_color: cool ? (warm ? 'daylight' : 'cool') : 'warm',
       };
     } catch (error) {
       this.log.debug('Error parsing broadcast state_string: ', error);
